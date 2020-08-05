@@ -1,0 +1,6 @@
+/__pycache__
+/win64
+*.session
+*.pyc
+creds.py
+session_handler.json
