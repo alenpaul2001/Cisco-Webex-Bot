@@ -21,7 +21,7 @@ class Database(object):
         self.connection.close()
 
     def print_all(self):
-        return self.cursor.execute("SELECT * FROM sqlite_master").fetchall()
+        return self.cursor.execute("SELECT * FROM sqlite_master WHERE type='table'").fetchall()
     
     def insert(self, tabname, lecture_name, start, end, link):
         self.cursor.execute(f"INSERT INTO [{tabname}] VALUES (:name, :start, :end, :link)", 
@@ -40,3 +40,4 @@ class Database(object):
     def delete_one(self, tabname, lecture_name):
         return self.cursor.execute(f"""DELETE
         FROM [{tabname}] WHERE lecture_name='{lecture_name}'""")
+

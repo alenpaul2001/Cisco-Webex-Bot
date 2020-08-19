@@ -1,4 +1,3 @@
-import sqlite3
 from selenium.webdriver.support import expected_conditions as EC
 from pyrogram import InlineKeyboardButton, InlineKeyboardMarkup
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -11,7 +10,7 @@ from datetime import datetime
 from sql_backend import Database
 import json, os, asyncio
 from creds import Info
-import re
+import re, sqlite3
 
 time_to_wait = 40
 
@@ -33,9 +32,13 @@ async def recv(client, message):
             data["name"] = message.text
             await message.reply_text(quote=True, text="Now send the start and end time in 24HR format\n\n <code>Example : 8.30-9.30</code>")
         elif len(data) == 3:
-            start_time, end_time = message.text.split("-", 1)
-            data["start"] = start_time
-            data["end"] = end_time
+            y = message.text.split("-", 1)
+            start = str(y[0]).split('.')
+            end = str(y[1]).split('.')
+            p = (("{0}|{1:02}-{2:02}".format(data["date"], int(start[0]),int(start[1]))), ("{0}|{1:02}-{2:02}".format(data["date"], int(end[0]),int(end[1]))))
+            print(p)
+            data["start"] = p[0]
+            data["end"] = p[1]
             await message.reply_text(quote=True, text="Now send me the lecture link")
         elif len(data) == 5:
             data["link"] = message.text
@@ -66,7 +69,6 @@ async def recv(client, message):
         )
         await auto_join(
             message.text,
-            client,
             random_message
         )
 
@@ -78,11 +80,20 @@ async def json_writer(exec_url, session_id):
         writer.writelines(json.dumps(data, indent=2))
 
 
-async def auto_join(meeting_link, client, message):
+async def auto_join(meeting_link, message):
+    if Info.GOOGLE_CHROME_BIN is None:
+        await message.edit("need to install Google Chrome. Module Stopping.")
+        return
     options = webdriver.ChromeOptions()
     options.add_argument('headless')
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument("--test-type")
+    options.add_argument("--headless")
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
     options.add_argument('window-size=1200x600')
     options.add_argument("--use-fake-ui-for-media-stream")
+    options.binary_location = Info.GOOGLE_CHROME_BIN
     browser = webdriver.Chrome(chrome_options=options)
     await json_writer(browser.command_executor._url, browser.session_id)
     await message.edit("Chrome Launched, Fetching Link...")
@@ -91,7 +102,7 @@ async def auto_join(meeting_link, client, message):
     #https://stackoverflow.com/questions/61104794/how-to-login-to-webex-platform-with-selenium
     await message.edit("Now Working, Progress 20%")
     try:
-        clickable = WebDriverWait(browser, time_to_wait).until(EC.element_to_be_clickable((By.ID, "push_download_join_by_browser")))
+        clickable = WebDriverWait(browser, time_to_wait).until(EC.element_to_be_clickable((By.ID, "smartJoinButton")))
         clickable.click()
         await message.edit("Now Working, Progress 40%")
         WebDriverWait(browser,time_to_wait).until(EC.frame_to_be_available_and_switch_to_it((By.ID,"pbui_iframe")))
@@ -173,10 +184,9 @@ async def callback_handler(client, callback_query):
     await msg.delete()    
     if cb_data == 'yes' or cb_data == 'ss':
         if cb_data == "ss":
-            await screenshot(client, msg)
             await asyncio.sleep(5)
         try:
-            date, session_id, exec_url = await json_reader()
+            _, session_id, exec_url = await json_reader()
             browser = attach_to_session(exec_url, session_id)
             browser.quit() ; os.remove("session_handler.json")
             await client.send_message(text="Session Closed", chat_id=msg.chat.id)
@@ -222,7 +232,6 @@ async def callback_handler(client, callback_query):
         lecture_name = msg["reply_markup"]["inline_keyboard"][int(pos)][0]["text"]
         db = Database()
         data = db.find_one(tabname, lecture_name)
-        print(data)
         await msg.reply_text(
             text=f"Lecture name : {data[0]}\n\nstart time : {data[1]}\nend time : {data[2]}\nlink : {data[3]}",
             reply_markup=InlineKeyboardMarkup([
@@ -240,6 +249,12 @@ async def callback_handler(client, callback_query):
             db.delete_table(tabname)
         db.commit()
         await msg.reply_text(quote=True, text="Lecture deleted 😜")
+    
+    # LOAD LINK -- >
+    elif cb_data == "load":
+        print("Initiated Auto Join Link --> " + str(l := msg.text.split("\n")[-1].split(" ")[-1]))
+        m = await client.send_message(msg.chat.id,"Loading Lecture")
+        await auto_join(l, m)
     # °º¤ø,¸¸,ø¤º°`°º¤ø,¸,ø¤°º¤ø,¸¸,ø¤º°`°º¤ø,¸
     elif cb_data == 'exit':
         await msg.reply_text("understandable have a great day")
@@ -293,7 +308,7 @@ async def send_message(_, message):
         with open("message.lock", "w") as _:
             pass
         try: 
-            date, session_id, exec_url = await json_reader()
+            _, session_id, exec_url = await json_reader()
             browser = attach_to_session(exec_url, session_id)
             await asyncio.sleep(1)
             # Webdrive Stuffs :)
