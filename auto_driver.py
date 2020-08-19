@@ -81,9 +81,6 @@ async def json_writer(exec_url, session_id):
 
 
 async def auto_join(meeting_link, message):
-    if Info.GOOGLE_CHROME_BIN is None:
-        await message.edit("need to install Google Chrome. Module Stopping.")
-        return
     options = webdriver.ChromeOptions()
     options.add_argument('headless')
     options.add_argument('--ignore-certificate-errors')
@@ -93,7 +90,6 @@ async def auto_join(meeting_link, message):
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('window-size=1200x600')
     options.add_argument("--use-fake-ui-for-media-stream")
-    options.binary_location = Info.GOOGLE_CHROME_BIN
     browser = webdriver.Chrome(chrome_options=options)
     await json_writer(browser.command_executor._url, browser.session_id)
     await message.edit("Chrome Launched, Fetching Link...")
