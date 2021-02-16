@@ -38,21 +38,6 @@ async def sync_cancel(c, m):
             print(task)
             print(async_tasks.get_name())
             if async_tasks.get_name() == task:
-                async_tasks.cancel()
-
-# print(datetime.now() - current_time)
-# j = [tuples for table_list in all_entries for tuples in table_list]
-# sorted_time = sorted(j, key=cmp_to_key(sort_func))
-# print(sorted_time)
-# for items in sorted_time:
-#     if str(today) == items[1].split("|")[0]:
-#         print("hmm")
-
-    # print(items[1].split("|")[0])
-# print(str(today))
-
-# a = time.strptime("30-10-2001-09-30", "%d-%m-%Y-%H-%M")
-# b = time.strptime("30-09-2001-09-41", "%d-%m-%Y-%H-%M")
 
 
 async def scheduler(seconds, link, client):
